@@ -1,6 +1,6 @@
 # Amanchi Events
 
-Amanchi Events is a browser-based prototype for a modern event and community platform. It combines the core event workflows common to Luma-style products with additional organizer operations, guest CRM, segmented campaigns, commerce, analytics, integrations, and enterprise controls.
+Amanchi Events is a Next.js prototype for a modern event and community platform. It combines the core event workflows common to Luma-style products with additional organizer operations, guest CRM, segmented campaigns, commerce, analytics, integrations, and enterprise controls.
 
 ## Current Prototype
 
@@ -14,7 +14,14 @@ Amanchi Events is a browser-based prototype for a modern event and community pla
 
 ## Run Locally
 
-Open `index.html` in a browser. No install step is required.
+Install dependencies and start the local development server:
+
+```bash
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000`.
 
 ## Next Build Steps
 

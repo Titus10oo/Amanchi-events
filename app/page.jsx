@@ -1,60 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-const initialEvents = [
-  {
-    id: 1,
-    title: "Operators Circle: Growth Systems",
-    format: "Hybrid",
-    date: "2026-05-22",
-    city: "Lagos",
-    status: "Live",
-    registrations: 184,
-    capacity: 220,
-    revenue: 9200,
-    price: 50,
-    approval: "Domain rules",
-    waitlist: 17,
-    sessions: 3,
-    conversion: 42,
-    source: "Newsletter"
-  },
-  {
-    id: 2,
-    title: "Design Systems Clinic",
-    format: "Online",
-    date: "2026-05-29",
-    city: "Remote",
-    status: "Draft",
-    registrations: 68,
-    capacity: 120,
-    revenue: 0,
-    price: 0,
-    approval: "Manual review",
-    waitlist: 0,
-    sessions: 1,
-    conversion: 31,
-    source: "Partner"
-  },
-  {
-    id: 3,
-    title: "AI Builders Summit",
-    format: "Multi-session",
-    date: "2026-06-12",
-    city: "Abuja",
-    status: "Live",
-    registrations: 412,
-    capacity: 500,
-    revenue: 61800,
-    price: 150,
-    approval: "Auto-approve",
-    waitlist: 43,
-    sessions: 8,
-    conversion: 48,
-    source: "Referral"
-  }
-];
+import { useEffect, useMemo, useState } from "react";
 
 const guests = [
   ["Amara Okeke", "Founder", "VIP", "Checked in", "Operators Circle", "LinkedIn"],
@@ -109,8 +55,42 @@ export default function Home() {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [compact, setCompact] = useState(false);
-  const [events, setEvents] = useState(initialEvents);
+  const [events, setEvents] = useState([]);
+  const [user, setUser] = useState(null);
+  const [permissions, setPermissions] = useState([]);
+  const [status, setStatus] = useState("Loading workspace...");
   const [showModal, setShowModal] = useState(false);
+  const canCreateEvents = permissions.includes("events:create");
+
+  useEffect(() => {
+    loadSession();
+  }, []);
+
+  async function loadSession() {
+    const response = await fetch("/api/auth/me");
+    const data = await response.json();
+    setUser(data.user);
+    setPermissions(data.permissions || []);
+
+    if (data.user) {
+      await loadEvents();
+    } else {
+      setStatus("Sign in to manage Amanchi Events.");
+    }
+  }
+
+  async function loadEvents() {
+    const response = await fetch("/api/events");
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error || "Unable to load events.");
+      return;
+    }
+
+    setEvents(data.events);
+    setStatus("Workspace synced.");
+  }
 
   const filteredEvents = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -130,34 +110,59 @@ export default function Home() {
     });
   }, [events, filter, query]);
 
-  const addEvent = (event) => {
+  const login = async (event) => {
+    event.preventDefault();
+    setStatus("Signing in...");
+    const data = new FormData(event.currentTarget);
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: data.get("email"), password: data.get("password") })
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setStatus(result.error || "Sign in failed.");
+      return;
+    }
+
+    setUser(result.user);
+    await loadSession();
+  };
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    setPermissions([]);
+    setEvents([]);
+    setStatus("Signed out.");
+  };
+
+  const addEvent = async (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const format = data.get("format");
-    setEvents((current) => [
-      {
-        id: Date.now(),
-        title: data.get("title"),
-        format,
-        date: data.get("date"),
-        city: format === "Online" ? "Remote" : "TBD",
-        status: "Draft",
-        registrations: 0,
-        capacity: Number(data.get("capacity")),
-        revenue: 0,
-        price: Number(data.get("price")),
-        approval: data.get("approval"),
-        waitlist: 0,
-        sessions: format === "Multi-session" ? 4 : 1,
-        conversion: 0,
-        source: "New"
-      },
-      ...current
-    ]);
+    const response = await fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.fromEntries(data))
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setStatus(result.error || "Event could not be created.");
+      return;
+    }
+
+    setEvents((current) => [result.event, ...current]);
+    setStatus("Event draft saved to the backend.");
     event.currentTarget.reset();
     setShowModal(false);
     setView("events");
   };
+
+  if (!user) {
+    return <LoginScreen status={status} onLogin={login} />;
+  }
 
   return (
     <div className={`app-shell ${compact ? "compact" : ""}`}>
@@ -180,9 +185,10 @@ export default function Home() {
         </nav>
 
         <div className="plan-card">
-          <span>Plus workspace</span>
-          <strong>72% send capacity</strong>
+          <span>{user.role.replace("_", " ")} access</span>
+          <strong>{user.name}</strong>
           <div className="meter"><span style={{ width: "72%" }} /></div>
+          <button className="secondary-button" onClick={logout}>Sign out</button>
         </div>
       </aside>
 
@@ -198,13 +204,14 @@ export default function Home() {
               <input type="search" placeholder="Search events, guests, campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
             </div>
             <button className="icon-button" aria-label="Toggle density" title="Toggle density" onClick={() => setCompact((value) => !value)}>D</button>
-            <button className="primary-button" onClick={() => setShowModal(true)}>Create event</button>
+            <button className="primary-button" disabled={!canCreateEvents} onClick={() => setShowModal(true)}>Create event</button>
           </div>
         </header>
 
         <section className="workspace">
+          <StatusBar user={user} permissions={permissions} status={status} />
           {view === "overview" && <Overview events={events} setView={setView} />}
-          {view === "events" && <EventsView events={filteredEvents} filter={filter} setFilter={setFilter} openModal={() => setShowModal(true)} />}
+          {view === "events" && <EventsView events={filteredEvents} filter={filter} setFilter={setFilter} openModal={() => setShowModal(true)} canCreateEvents={canCreateEvents} />}
           {view === "guests" && <GuestsView query={query} />}
           {view === "campaigns" && <CampaignsView />}
           {view === "analytics" && <AnalyticsView />}
@@ -326,7 +333,59 @@ function Overview({ events, setView }) {
   );
 }
 
-function EventsView({ events, filter, setFilter, openModal }) {
+function LoginScreen({ status, onLogin }) {
+  return (
+    <main className="login-screen">
+      <section className="login-panel">
+        <div className="brand login-brand">
+          <div className="brand-mark" aria-hidden="true">A</div>
+          <div>
+            <strong>Amanchi</strong>
+            <span>Event OS</span>
+          </div>
+        </div>
+        <p className="eyebrow">Workspace sign in</p>
+        <h1>Manage events with roles, sessions, guests, campaigns, and revenue controls.</h1>
+        <form className="login-form" onSubmit={onLogin}>
+          <label>
+            Email
+            <input name="email" type="email" defaultValue="titusemma2017@gmail.com" required />
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" defaultValue="amanchi-owner" required />
+          </label>
+          <button className="primary-button" type="submit">Sign in</button>
+        </form>
+        <div className="demo-accounts">
+          <strong>Demo roles</strong>
+          <span>Owner: titusemma2017@gmail.com / amanchi-owner</span>
+          <span>Manager: manager@amanchi.test / amanchi-manager</span>
+          <span>Check-in: checkin@amanchi.test / amanchi-checkin</span>
+        </div>
+        <p className="status-text">{status}</p>
+      </section>
+    </main>
+  );
+}
+
+function StatusBar({ user, permissions, status }) {
+  return (
+    <section className="status-bar">
+      <div>
+        <p className="eyebrow">Backend session</p>
+        <strong>{status}</strong>
+      </div>
+      <div className="meta-row">
+        <span className="badge green">{user.role.replace("_", " ")}</span>
+        <span>{permissions.length} permissions</span>
+        <span>JSON database</span>
+      </div>
+    </section>
+  );
+}
+
+function EventsView({ events, filter, setFilter, openModal, canCreateEvents }) {
   return (
     <>
       <section className="toolbar">
@@ -337,7 +396,7 @@ function EventsView({ events, filter, setFilter, openModal }) {
             </button>
           ))}
         </div>
-        <button className="primary-button" onClick={openModal}>Create event</button>
+        <button className="primary-button" disabled={!canCreateEvents} onClick={openModal}>Create event</button>
       </section>
       <section className="grid-3">
         {events.length ? events.map((event) => <EventCard event={event} key={event.id} />) : <EmptyState text="No events match this filter." />}

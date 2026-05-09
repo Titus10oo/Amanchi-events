@@ -41,6 +41,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
@@ -264,6 +269,22 @@ h3 {
 .workspace {
   display: grid;
   gap: 18px;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.status-bar strong {
+  display: block;
 }
 
 .hero-panel {
@@ -621,6 +642,54 @@ td {
   background: rgba(21, 32, 27, 0.38);
 }
 
+.login-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 22px;
+}
+
+.login-panel {
+  display: grid;
+  gap: 18px;
+  width: min(760px, 100%);
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.login-brand {
+  margin-bottom: 4px;
+}
+
+.login-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.demo-accounts {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.demo-accounts strong {
+  color: var(--ink);
+}
+
+.status-text {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
 .modal-panel {
   width: min(720px, calc(100vw - 24px));
   border: 0;
@@ -733,8 +802,14 @@ select {
   .stat-grid,
   .grid-3,
   .kanban,
-  .form-grid {
+  .form-grid,
+  .login-form {
     grid-template-columns: 1fr;
+  }
+
+  .status-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   h1 {
